@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Testing pure PHP API</title>
+
+    <script src="//ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+    <style>
+        form {
+            border: 1px solid grey;
+            padding: 10px;
+            margin-bottom: 10px;
+        }
+        form p {
+            margin-top: 0;
+        }
+        #content, html, body {
+            height: 98%;
+        }
+        #api, #display {
+            float: left;
+            width: 48%;
+            padding-left: 2%;
+            height: 100%;
+            overflow: scroll;
+        }
+        #data {
+            margin: 0;
+        }
+        #message:not(:empty) {
+            border: 1px solid red;
+            padding: 10px;
+        }
+        #data:not(:empty) {
+            border: 1px solid green;
+            padding: 10px;
+        }
+        #token {
+            width: 100%;
+        }
+    </style>
+    <script>
+        error = (message = '') => $('#message').text(message)
+        $(function() {
+            $('form').on('submit', function (e) {
+
+                error();
+                $('#data').text('');
+
+                let action = $(this).attr('action');
+                const srcAction = $(this).attr('data-action');
+                const method = $(this).attr('method');
+                const headers = new Headers();
+                const token = $('#token').val();
+                if (token && !/user/.test(action)) {
+                    headers.append('Auth', token);
+                }
+                const formData = new FormData($(this)[0]);
+
+                const init = {
+                    method,
+                    headers,
+                };
+
+                const id = formData.get('id');
+                if (id) {
+                    formData.delete('id');
+                    action = srcAction.replace('{ID}', id);
+                }
+
+                if (method.toLowerCase() !== 'get') {
+                    init['body'] = formData;
+                } else {
+                    action += '?' + new URLSearchParams(formData).toString()
+                }
+
+                fetch(action, init).then(resp => {
+                    return resp.json();
+                }).then(data => {
+                    if (data.success) {
+                        $('#data').text(JSON.stringify(data.data, null, 2));
+                        if (data.data.token) {
+                            $('#token').val(data.data.token);
+                        }
+                    } else {
+                        error(data.message);
+                    }
+                }).catch(e => {
+                    error(e);
+                })
+                return false;
+            });
+        });
+    </script>
+</head>
+<body>
+<div id="content">
+    <div id="api">
+        <form action="/users" method="post">
+            <p>Register</p>
+            <input type="text" name="email" value="foo@example.com" placeholder="email">
+            <input type="text" name="password" value="pass" placeholder="password">
+            <button type="submit">Get token</button>
+        </form>
+
+        <form action="/users/sign-in" method="post">
+            <p>Login</p>
+            <input type="text" name="email" value="foo@example.com" placeholder="email">
+            <input type="text" name="password" value="pass" placeholder="password">
+            <button type="submit">Get token</button>
+        </form>
+
+        <form onsubmit="return false;">
+            <p>Token</p>
+            <input id="token" type="text" name="token" placeholder="token">
+        </form>
+
+        <form action="/tasks" method="get">
+            <p>List tasks</p>
+
+            <input type="text" name="count" value="" placeholder="count per page">
+            <span>May be <i>1</i> to <i>100</i>; default <b>10</b></span>
+            <br>
+
+            <input type="text" name="page" value="" placeholder="page">
+            <span>May be <i>1</i> and higher; default <b>1</b></span>
+            <br>
+
+            <input type="text" name="sort" value="" placeholder="sort">
+            <span>May be <i>title</i>, <i>due_date</i>, <i>priority</i>; default <b>due_date</b></span>
+            <br>
+
+            <input type="text" name="order" value="" placeholder="order">
+            <span>May be <i>asc</i>, <i>desc</i>; default <b>asc</b></span>
+            <br>
+
+            <button type="submit">Submit</button>
+        </form>
+
+        <form action="/tasks" method="post">
+            <p>Create task</p>
+
+            <input type="text" name="title" value="" placeholder="title">
+            <span><i>3</i> symbols minimum</span>
+            <br>
+
+            <input type="datetime-local" name="due_date" value="" placeholder="due date">
+            <span>Date and time must be in the future; default - now plus one week</span>
+            <br>
+
+            <input type="text" name="priority" value="" placeholder="priority">
+            <span>May be <i>1</i> to <i>3</i>; default <b>2</b></span>
+            <br>
+
+            <button type="submit">Submit</button>
+        </form>
+
+        <form data-action="/tasks/{ID}/done" method="post">
+            <p>Mark task as done</p>
+
+            <input type="text" name="id" value="" placeholder="ID">
+            <span>Positive integer</span>
+            <br>
+
+            <button type="submit">Submit</button>
+        </form>
+
+        <form data-action="/tasks/{ID}" method="delete">
+            <p>Delete task</p>
+
+            <input type="text" name="id" value="" placeholder="ID">
+            <span>Positive integer</span>
+            <br>
+
+            <button type="submit">Submit</button>
+        </form>
+    </div>
+
+    <div id="display">
+        <div id="message"></div>
+        <pre id="data"></pre>
+    </div>
+
+</div>
+</body>
+</html>
