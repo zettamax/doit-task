@@ -12,9 +12,8 @@ class TaskController
 
     public function before()
     {
-        $headers = getallheaders();
-        if (array_key_exists('auth', $headers)) {
-            $token = $headers['auth'];
+        $token = $_SERVER['HTTP_AUTH'] ?? null;
+        if ($token) {
             $this->userId = Token::searchUserId($token);
         }
 
